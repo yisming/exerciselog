@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>雲端運動日誌</title>
+
+    <!-- iOS 專屬 Web App 支援 -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="運動日誌">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512' width='512' height='512'%3E%3Crect width='512' height='512' rx='128' fill='%239AB098'/%3E%3Cpath d='M288 96a48 48 0 1 0-96 0 48 48 0 1 0 96 0zm-88 96c-17.7 0-32 14.3-32 32v64c0 8.8 7.2 16 16 16s16-7.2 16-16v-48h32v80l-42.3 84.7c-3.9 7.9-2.3 17.5 4 23.8s15.9 7.9 23.8 4L256 405.3l38.5 43.3c5.9 6.6 15.6 7.9 23 3s9.9-14.8 5.8-22.3L288 368v-96l32-32v48c0 8.8 7.2 16 16 16s16-7.2 16-16v-64c0-26.5-21.5-48-48-48H200z' fill='%23FFFFFF'/%3E%3C/svg%3E">
+
+    <!-- Android PWA Manifest -->
+    <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22%E9%9B%B2%E7%AB%AF%E9%81%8B%E5%8B%95%E6%97%A5%E8%AA%8C%22%2C%22short_name%22%3A%22%E9%81%8B%E5%8B%95%E6%97%A5%E8%AA%8C%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23F7F5F0%22%2C%22theme_color%22%3A%22%239AB098%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20512%20512'%20width%3D'512'%20height%3D'512'%253E%253Crect%20width%3D'512'%20height%3D'512'%20rx%3D'128'%20fill%3D'%25239AB098'%2F%253E%253Cpath%20d%3D'M288%2096a48%2048%200%201%200-96%200%2048%2048%200%201%200%2096%200zm-88%2096c-17.7%200-32%2014.3-32%2032v64c0%208.8%207.2%2016%2016%2016s16-7.2%2016-16v-48h32v80l-42.3%2084.7c-3.9%207.9-2.3%2017.5%204%2023.8s15.9%207.9%2023.8%204L256%20405.3l38.5%2043.3c5.9%206.6%2015.6%207.9%2023%203s9.9-14.8%205.8-22.3L288%20368v-96l32-32v48c0%208.8%207.2%2016%2016%2016s16-7.2%2016-16v-64c0-26.5-21.5-48-48-48H200z'%20fill%3D'%2523FFFFFF'%2F%253E%253C%2Fsvg%253E%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%2C%22purpose%22%3A%22any%20maskable%22%7D%5D%7D">
+
+    <!-- 套件匯入 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Serif+TC:wght@600;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <style>
+        :root { --bg-patient: #F7F5F0; --text-main: #5C544D; --card-bg: #FFFFFF; --accent-cardio: #E48A72; --bg-cardio: #FDF4F1; --accent-strength: #6B8EAD; --bg-strength: #F2F6F9; --accent-sage: #9AB098; --bg-admin: #F0F4F8; --accent-blue: #4A90E2; --accent-navy: #2C3E50; }
+        body { font-family: 'Noto Sans TC', -apple-system, BlinkMacSystemFont, sans-serif; color: var(--text-main); transition: background-color 0.3s ease; -webkit-tap-highlight-color: transparent; }
+        body.patient-mode { background-color: var(--bg-patient); } body.admin-mode { background-color: var(--bg-admin); }
+        h1, h2, h3, .serif { font-family: 'Noto Serif TC', serif; }
+        
+        .card { background: var(--card-bg); border-radius: 14px; box-shadow: 0 4px 20px rgba(0,0,0,0.04); padding: 20px; border: 1px solid #EFEBE4; }
+        .navbar { background: var(--card-bg); box-shadow: 0 2px 10px rgba(0,0,0,0.05); padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 50; }
+        .nav-btn { padding: 8px 12px; border-radius: 8px; font-weight: 700; font-size: 13px; cursor: pointer; transition: all 0.2s; touch-action: manipulation; }
+        .nav-btn.active-patient { background: var(--accent-sage); color: white; } .nav-btn.inactive-patient { background: #E8F0E7; color: var(--accent-sage); }
+        .nav-btn.active-admin { background: var(--accent-navy); color: white; } .nav-btn.inactive-admin { background: #e1e8f0; color: var(--accent-navy); }
+
+        .input-group label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+        input[type="time"], input[type="number"], input[type="text"], input[type="date"], select { width: 100%; font-size: 16px !important; padding: 10px 12px; border: 1px solid #DCD3C6; border-radius: 8px; background: #FAFAFA; color: #333; -webkit-appearance: none; appearance: none; box-sizing: border-box; min-height: 44px; }
+        input[type="date"]::-webkit-date-and-time-value { text-align: center; } input:focus, select:focus { border-color: var(--accent-sage); outline: none; background: #FFF; }
+        
+        .section-title { display: flex; align-items: center; font-size: 1.05rem; font-weight: bold; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid; }
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(44, 62, 80, 0.75); backdrop-filter: blur(4px); z-index: 100; display: flex; justify-content: center; align-items: center; padding: 20px; opacity: 0; pointer-events: none; transition: opacity 0.25s ease; }
+        .modal-overlay.show { opacity: 1; pointer-events: auto; }
+        .modal-card { background: white; padding: 24px; border-radius: 16px; box-shadow: 0 15px 35px rgba(0,0,0,0.2); width: 100%; max-width: 380px; text-align: center; transform: translateY(15px); transition: transform 0.25s ease; }
+        .modal-overlay.show .modal-card { transform: translateY(0); }
+
+        .admin-table-wrapper { -webkit-overflow-scrolling: touch; }
+        .admin-table th { background: #F8FAFC; color: var(--accent-navy); font-weight: 700; padding: 10px 8px; text-align: center; border-bottom: 2px solid #E2E8F0; font-size: 13px; white-space: nowrap; }
+        .admin-table td { padding: 10px 8px; text-align: center; border-bottom: 1px solid #E2E8F0; font-size: 13px; white-space: nowrap; }
+        .admin-table tr:hover { background: #F1F5F9; }
+        .hidden-view { display: none !important; }
+
+        .date-nav-btn { color: #8C8279; padding: 8px 12px; border-radius: 8px; transition: background 0.2s; touch-action: manipulation; font-size: 14px; }
+        .date-nav-btn:hover, .date-nav-btn:active { background-color: #F0EAE1; color: var(--text-main); }
+        .status-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+        .status-online { background-color: #4CAF50; box-shadow: 0 0 6px #4CAF50; } .status-offline { background-color: #F44336; }
+
+        .chart-scroll-container { width: 100%; overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; }
+        .chart-wrapper { min-width: 100%; height: 260px; position: relative; }
+        .feedback-box { border-radius: 12px; padding: 16px; display: flex; align-items: flex-start; gap: 12px; background-color: #F9F6F0; border-left: 4px solid var(--accent-sage); }
+        .feedback-icon { font-size: 24px; color: var(--accent-sage); }
+    </style>
+</head>
+<body id="bodyEl" class="patient-mode">
+
+    <nav class="navbar">
+        <div class="text-base md:text-xl font-bold serif text-[#5C544D] flex items-center">
+            <i class="fa-solid fa-person-running text-[#E48A72] mr-2"></i>
+            <span id="navTitle">雲端運動日誌</span>
+            <div id="cloudStatus" class="ml-2 text-xs font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full flex items-center">
+                <span class="status-dot status-offline" id="statusDot"></span>
+                <span id="statusText">離線</span>
+            </div>
+        </div>
+        <div class="flex items-center gap-1.5 md:gap-3">
+            <button id="btnInstallApp" class="hidden-view text-xs bg-[#E8F0E7] text-[#9AB098] hover:bg-[#d8e6d6] px-2.5 py-1.5 rounded-lg font-bold flex items-center border border-[#9AB098]" onclick="showInstallGuide()">
+                <i class="fa-solid fa-arrow-down-to-bracket mr-1"></i>安裝App
+            </button>
+            <button id="btnPatient" class="nav-btn active-patient" onclick="switchView('patient')">
+                <i class="fa-solid fa-user mr-1"></i> 病友端
+            </button>
+            <button id="btnAdmin" class="nav-btn inactive-admin" onclick="requestAdminAccess()">
+                <i class="fa-solid fa-lock mr-1"></i> 後台
+            </button>
+        </div>
+    </nav>
+
+    <!-- 安裝引導彈窗 -->
+    <div id="installModal" class="modal-overlay">
+        <div class="modal-card border-t-4 border-[#9AB098]">
+            <i class="fa-solid fa-mobile-screen-button text-4xl text-[#9AB098] mb-3"></i>
+            <h3 class="text-xl font-bold text-[#5C544D] mb-2 serif">將日誌設為手機桌面 App</h3>
+            <div id="installContent" class="text-left text-xs md:text-sm text-gray-600 space-y-3 mb-5 leading-relaxed"></div>
+            <button onclick="closeModal('installModal')" class="w-full bg-[#9AB098] text-white py-2.5 rounded-lg font-bold hover:bg-[#839881]">我知道了</button>
+        </div>
+    </div>
+
+    <!-- 密碼驗證彈窗 -->
+    <div id="authModal" class="modal-overlay">
+        <div class="modal-card">
+            <i class="fa-solid fa-user-shield text-4xl text-[#2C3E50] mb-3"></i>
+            <h3 class="text-xl font-bold text-[#2C3E50] mb-1 serif">管理員身份驗證</h3>
+            <p class="text-gray-500 text-sm mb-4">為保護病友隱私，請輸入管理員密碼</p>
+            <input type="password" id="adminPassword" class="w-full p-3 border border-gray-300 rounded-lg mb-3 text-center tracking-widest" placeholder="請輸入密碼">
+            <div id="authError" class="text-red-500 text-sm font-bold mb-3 hidden-view">密碼錯誤，請重新輸入！</div>
+            <div class="flex gap-2">
+                <button onclick="closeModal('authModal')" class="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-lg font-bold hover:bg-gray-300">取消</button>
+                <button onclick="verifyAdmin()" class="flex-1 bg-[#2C3E50] text-white py-2.5 rounded-lg font-bold hover:bg-[#1a252f]">確認進入</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 自訂提示窗 -->
+    <div id="alertModal" class="modal-overlay">
+        <div class="modal-card border-t-4 border-[#9AB098]" id="alertCardBorder">
+            <i id="alertIcon" class="fa-solid fa-circle-info text-4xl text-[#9AB098] mb-3"></i>
+            <h3 id="alertTitle" class="text-xl font-bold text-[#5C544D] mb-1 serif">系統提示</h3>
+            <p id="alertMsg" class="text-gray-600 text-sm mb-5 leading-relaxed"></p>
+            <button onclick="closeModal('alertModal')" class="w-full bg-[#9AB098] text-white py-2.5 rounded-lg font-bold hover:bg-[#839881]" id="alertBtn">確定</button>
+        </div>
+    </div>
+
+    <!-- 刪除確認提示窗 -->
+    <div id="deleteModal" class="modal-overlay">
+        <div class="modal-card border-t-4 border-red-500">
+            <i class="fa-solid fa-triangle-exclamation text-4xl text-red-500 mb-3"></i>
+            <h3 class="text-xl font-bold text-[#2C3E50] mb-1 serif">確認刪除資料？</h3>
+            <p id="deleteMsg" class="text-gray-600 text-sm mb-5 leading-relaxed">此動作無法復原，確定要將該病友的所有雲端記錄徹底刪除嗎？</p>
+            <div class="flex gap-2">
+                <button onclick="closeModal('deleteModal')" class="flex-1 bg-gray-200 text-gray-700 py-2.5 rounded-lg font-bold hover:bg-gray-300">取消</button>
+                <button onclick="executeDelete()" class="flex-1 bg-red-500 text-white py-2.5 rounded-lg font-bold hover:bg-red-600">確認刪除</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto mt-6 px-3 md:px-4 w-full pb-10">
+        <!-- ==================== 病友端 ==================== -->
+        <div id="patientView">
+            <header class="text-center mb-6">
+                <h1 class="text-2xl md:text-3xl font-bold mb-2 text-[#5C544D]">每天微小的努力，都是愛自己的證明</h1>
+                <p class="text-gray-500 text-sm">不求快，不求完美，只需將運動融入日常並且持續記錄。</p>
+            </header>
+
+            <div class="card mb-5 border-l-4 border-[#9AB098] bg-white">
+                <h2 class="text-base md:text-lg font-bold mb-3 serif text-[#5C544D]"><i class="fa-solid fa-bullseye text-[#9AB098] mr-2"></i>我的活動目標設定</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div class="input-group"><label>病友姓名</label><input type="text" id="patientName" placeholder="請輸入姓名" onchange="loadPatientData()"></div>
+                    <div class="input-group"><label class="text-[#E48A72]">每日有氧運動目標 (分鐘)</label><input type="number" id="targetCardio" placeholder="例如: 15" min="0" onchange="saveTargets()"></div>
+                    <div class="input-group"><label class="text-[#6B8EAD]">每次肌力訓練目標 (次數)</label><input type="number" id="targetStrengthReps" placeholder="例如: 30" min="0" onchange="saveTargets()"></div>
+                    <div class="input-group"><label class="text-[#4A7C59]">每週肌力訓練目標 (天數)</label><input type="number" id="targetStrengthDays" placeholder="例如: 3" min="0" max="7" onchange="saveTargets()"></div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+                <div class="lg:col-span-4 flex flex-col gap-5">
+                    <div class="card flex-grow">
+                        <div class="flex justify-between items-center border-b border-gray-200 mb-5 pb-3">
+                            <button type="button" onclick="changeDate(-1)" class="date-nav-btn font-bold"><i class="fa-solid fa-chevron-left mr-1"></i> 前一天</button>
+                            <input type="date" id="recordDate" class="text-base font-bold text-center border-none bg-transparent cursor-pointer outline-none text-[#5C544D]" onchange="loadDateData()">
+                            <button type="button" onclick="changeDate(1)" class="date-nav-btn font-bold">後一天 <i class="fa-solid fa-chevron-right ml-1"></i></button>
+                        </div>
+                        <form id="exerciseForm" class="space-y-5">
+                            <div class="p-4 rounded-xl bg-[var(--bg-cardio)] border border-[#F2D7D0]">
+                                <h3 class="section-title text-[var(--accent-cardio)] border-[var(--accent-cardio)]"><i class="fa-solid fa-heart-pulse mr-2"></i>有氧運動</h3>
+                                <div class="space-y-3 mt-2">
+                                    <div class="input-group"><label>運動項目</label><input type="text" id="cardioType" placeholder="例如: 散步、快走..." oninput="saveDailyData()"></div>
+                                    <div class="input-group"><label>持續時間 (分鐘)</label><input type="number" id="cardioMins" min="0" placeholder="0" oninput="saveDailyData()"></div>
+                                </div>
+                            </div>
+                            <div class="p-4 rounded-xl bg-[var(--bg-strength)] border border-[#D5E1EA]">
+                                <h3 class="section-title text-[var(--accent-strength)] border-[var(--accent-strength)]"><i class="fa-solid fa-dumbbell mr-2"></i>肌力訓練</h3>
+                                <div class="space-y-3 mt-2">
+                                    <div class="input-group"><label>訓練部位 / 項目</label><input type="text" id="strengthType" placeholder="例如: 深蹲、靠牆站立..." oninput="saveDailyData()"></div>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <div class="input-group"><label>次數 (每組幾下)</label><input type="number" id="strengthReps" min="0" placeholder="0" oninput="saveDailyData()"></div>
+                                        <div class="input-group"><label>組數 (共做幾組)</label><input type="number" id="strengthSets" min="0" placeholder="0" oninput="saveDailyData()"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="input-group"><label>心情與心得註記</label><input type="text" id="notes" placeholder="今天運動的感覺如何呢？" oninput="saveDailyData()"></div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-8 flex flex-col gap-5">
+                    <div class="card feedback-box" id="feedbackBox">
+                        <div class="feedback-icon" id="feedbackIcon"><i class="fa-solid fa-seedling"></i></div>
+                        <div><h3 class="text-base md:text-lg font-bold text-[#5C544D] mb-1 serif" id="feedbackTitle">歡迎開始您的運動旅程！</h3><p class="text-xs md:text-sm text-gray-600 leading-relaxed" id="feedbackText">輸入您的姓名與目標，開始記錄第一筆資料吧。</p></div>
+                    </div>
+
+                    <div class="card flex-grow">
+                        <div class="flex flex-wrap justify-between items-center mb-3 gap-2">
+                            <h3 class="text-base md:text-lg font-bold text-[#5C544D]"><i class="fa-solid fa-chart-pie mr-1.5 text-[#9AB098]"></i>活動進展分析</h3>
+                            <div class="flex gap-1.5">
+                                <button onclick="setChartMode('week')" id="btnChartWeek" class="text-xs px-3 py-1 rounded-full bg-[#9AB098] text-white font-bold transition-colors">近期7天</button>
+                                <button onclick="setChartMode('all')" id="btnChartAll" class="text-xs px-3 py-1 rounded-full bg-gray-200 text-gray-600 font-bold transition-colors hover:bg-gray-300">歷史總覽</button>
+                            </div>
+                        </div>
+                        <div class="space-y-6 mt-4">
+                            <div>
+                                <h4 class="text-xs md:text-sm font-bold text-[var(--accent-cardio)] mb-1.5 flex justify-between"><span>🔥 有氧時間 (分鐘)</span><span id="cardioStatusText" class="font-normal text-gray-500 text-xs"></span></h4>
+                                <div class="chart-scroll-container"><div class="chart-wrapper" id="cardioChartWrapper"><canvas id="cardioChart"></canvas></div></div>
+                            </div>
+                            <hr class="border-gray-100">
+                            <div>
+                                <div class="flex flex-wrap justify-between items-end mb-1.5 gap-1">
+                                    <h4 class="text-xs md:text-sm font-bold text-[var(--accent-strength)] flex items-center"><span>💪 肌力訓練進展 (每日次數 & 每週天數)</span></h4>
+                                    <div class="text-right"><span id="strengthStatusText" class="font-normal text-gray-500 text-xs"></span></div>
+                                </div>
+                                <div class="chart-scroll-container"><div class="chart-wrapper" id="strengthChartWrapper"><canvas id="strengthChart"></canvas></div></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="text-center">
+                        <button onclick="syncToCloud()" class="bg-[#9AB098] hover:bg-[#839881] active:scale-95 text-white px-7 py-2.5 rounded-full font-bold shadow-md transition-all text-sm md:text-base">
+                            <i class="fa-solid fa-cloud-arrow-up mr-1.5"></i>儲存並同步至雲端
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== 管理者端 ==================== -->
+        <div id="adminView" class="hidden-view">
+            <header class="mb-6 border-b-2 border-[#2C3E50] pb-4 flex flex-col md:flex-row justify-between items-start md:items-end gap-3">
+                <div>
+                    <h1 class="text-2xl md:text-3xl font-bold text-[#2C3E50]">管理後台 - 運動數據追蹤</h1>
+                    <p class="text-gray-500 text-xs md:text-sm mt-1">醫療團隊專屬介面：監控病友居家活動量與目標達成狀況</p>
+                </div>
+                <div class="flex items-center gap-2 w-full md:w-auto justify-end">
+                    <label class="font-bold text-[#2C3E50] text-sm whitespace-nowrap">病友：</label>
+                    <select id="adminPatientSelect" class="w-32 md:w-44 border-[#4A90E2] font-bold text-sm" onchange="loadAdminData()">
+                        <option value="">雲端讀取中...</option>
+                    </select>
+                    <!-- 匯出 Excel 按鈕 -->
+                    <button id="btnExportExcel" class="hidden-view bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg font-bold shadow transition-colors" onclick="exportToExcel()" title="下載 Excel 報表">
+                        <i class="fa-solid fa-file-excel"></i> <span class="hidden md:inline ml-1 text-sm">下載報表</span>
+                    </button>
+                    <button id="btnDeletePatient" class="hidden-view bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg font-bold shadow transition-colors" onclick="promptDeletePatient()" title="刪除病友雲端資料">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>
+            </header>
+
+            <div id="adminDashboard" class="hidden-view">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+                    <div class="card border-l-4 border-[#E48A72] bg-white p-3 md:p-4"><div class="text-xs text-gray-500 font-bold">有氧目標 (每日)</div><div class="text-xl md:text-2xl font-bold text-[#2C3E50] mt-1"><span id="adminTargetCardio">0</span><span class="text-xs text-gray-500 ml-1">分/日</span></div></div>
+                    <div class="card border-l-4 border-[#6B8EAD] bg-white p-3 md:p-4"><div class="text-xs text-gray-500 font-bold">肌力次數 (每次)</div><div class="text-xl md:text-2xl font-bold text-[#2C3E50] mt-1"><span id="adminTargetStrengthReps">0</span><span class="text-xs text-gray-500 ml-1">次</span></div></div>
+                    <div class="card border-l-4 border-[#4A7C59] bg-white p-3 md:p-4"><div class="text-xs text-gray-500 font-bold">肌力天數 (每週)</div><div class="text-xl md:text-2xl font-bold text-[#2C3E50] mt-1"><span id="adminTargetStrengthDays">0</span><span class="text-xs text-gray-500 ml-1">天/週</span></div></div>
+                    <div class="card border-l-4 border-[#F5A623] bg-white p-3 md:p-4"><div class="text-xs text-gray-500 font-bold">系統警示 (近7天)</div><div class="text-xs text-gray-700 mt-1 font-medium line-clamp-2" id="adminAlert"><i class="fa-solid fa-spinner fa-spin mr-1"></i> 運算中...</div></div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+                    <div class="lg:col-span-12 card">
+                        <div class="flex flex-wrap justify-between items-center mb-3 gap-2">
+                            <h3 class="text-base md:text-lg font-bold text-[#2C3E50]"><i class="fa-solid fa-chart-area mr-1.5"></i>長期活動與肌力趨勢分析</h3>
+                            <div class="flex gap-1.5">
+                                <button onclick="setAdminChartMode('week')" id="btnAdmWeek" class="text-xs px-3 py-1 rounded-full bg-[#4A90E2] text-white font-bold transition-colors">近期7天</button>
+                                <button onclick="setAdminChartMode('all')" id="btnAdmAll" class="text-xs px-3 py-1 rounded-full bg-gray-200 text-gray-600 font-bold transition-colors hover:bg-gray-300">歷史總覽</button>
+                            </div>
+                        </div>
+                        <div class="space-y-6">
+                            <div class="chart-scroll-container"><h4 class="text-xs md:text-sm font-bold text-[#E48A72] mb-1">🔥 有氧時間趨勢 (分鐘)</h4><div class="chart-wrapper" id="adminCardioChartWrapper"><canvas id="adminCardioChart"></canvas></div></div>
+                            <div class="chart-scroll-container"><div class="flex justify-between items-center mb-1"><h4 class="text-xs md:text-sm font-bold text-[#6B8EAD]">💪 肌力訓練進展趨勢 (次數與天數)</h4><span id="adminStrengthSummaryText" class="text-xs text-gray-500"></span></div><div class="chart-wrapper" id="adminStrengthChartWrapper"><canvas id="adminStrengthChart"></canvas></div></div>
+                        </div>
+                    </div>
+
+                    <div class="lg:col-span-12 card overflow-hidden">
+                        <h3 class="text-base md:text-lg font-bold mb-3 text-[#2C3E50]"><i class="fa-solid fa-table mr-1.5"></i>雲端詳細日誌記錄表</h3>
+                        <div class="overflow-x-auto admin-table-wrapper">
+                            <table class="w-full admin-table">
+                                <thead>
+                                    <tr><th>日期(星期)</th><th>有氧項目</th><th>有氧時間(分)</th><th>肌力項目</th><th>肌力細項(每組x組數)</th><th>當日總次數</th><th class="w-1/4">特別註記</th></tr>
+                                </thead>
+                                <tbody id="adminTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="adminEmptyState" class="card text-center py-16"><i class="fa-solid fa-cloud-arrow-down text-5xl text-gray-300 mb-3"></i><h3 class="text-lg text-gray-500">請從上方選擇病友以檢視雲端資料</h3></div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 1. Firebase 設定與 PWA 動態 Service Worker
+        // ==========================================
+        // 動態生成 Service Worker 以滿足 Chrome 等瀏覽器的 PWA 安裝門檻 (必須在 HTTPS 下執行)
+        if ('serviceWorker' in navigator) {
+            const swCode = "self.addEventListener('install', e => e.waitUntil(self.skipWaiting())); self.addEventListener('activate', e => e.waitUntil(self.clients.claim())); self.addEventListener('fetch', e => {});";
+            const blob = new Blob([swCode], { type: 'application/javascript' });
+            navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
+        }
+
+        const firebaseConfig = { databaseURL: "https://exercise-ad987-default-rtdb.firebaseio.com/" };
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        const exerciseDB = database.ref('exercise_logs_v2'); 
+        
+        firebase.database().ref('.info/connected').on('value', function(snap) {
+            const dot = document.getElementById('statusDot'); const txt = document.getElementById('statusText');
+            if (snap.val() === true) { dot.className = 'status-dot status-online'; txt.innerText = '已連線'; txt.classList.replace('text-gray-500', 'text-green-600'); } 
+            else { dot.className = 'status-dot status-offline'; txt.innerText = '離線'; txt.classList.replace('text-green-600', 'text-gray-500'); }
+        });
+
+        const ADMIN_PASSWORD = "ot420";
+        let currentPatient = ""; let patientData = { targets: { cardioDaily: 0, strengthReps: 0, strengthWeeklyDays: 0 }, logs: {} }; let currentDateStr = ""; 
+        const logInputs = ['cardioType', 'cardioMins', 'strengthType', 'strengthReps', 'strengthSets', 'notes'];
+        
+        let chartMode = 'week'; let adminChartMode = 'week'; let adminCloudDataSnapshot = null;
+        let cardioChartInstance = null; let strengthChartInstance = null; let adminCardioChartInstance = null; let adminStrengthChartInstance = null;
+        let deferredPrompt = null;
+
+        function getTodayStr() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+        function addDaysStr(dateStr, days) { if(!dateStr) return getTodayStr(); const parts = dateStr.split('-'); const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10)); d.setDate(d.getDate() + days); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+        function getDayOfWeek(dateStr) { if(!dateStr) return ''; const parts = dateStr.split('-'); const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10)); return ['日', '一', '二', '三', '四', '五', '六'][d.getDay()]; }
+        function getEmptyLog() { return { cardioType:'', cardioMins:'', strengthType:'', strengthReps:'', strengthSets:'', notes:'', hasCardio: false, hasStrength: false }; }
+
+        // ==========================================
+        // 2. 視圖、PWA安裝引導
+        // ==========================================
+        window.onload = () => {
+            document.getElementById('recordDate').value = getTodayStr(); loadPatientData(); 
+
+            // 判斷是否已經安裝至桌面 (Standalone 模式)
+            const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+            if (!isStandalone) { document.getElementById('btnInstallApp').classList.remove('hidden-view'); }
+
+            exerciseDB.on('value', (snapshot) => {
+                const val = snapshot.val();
+                if(document.getElementById('bodyEl').className.includes('admin-mode')) {
+                    refreshAdminDropdown(val); if(document.getElementById('adminPatientSelect').value) loadAdminData(val);
+                }
+            });
+        };
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault(); deferredPrompt = e; document.getElementById('btnInstallApp').classList.remove('hidden-view');
+        });
+
+        function showInstallGuide() {
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+            const container = document.getElementById('installContent');
+            
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choice) => {
+                    if (choice.outcome === 'accepted') document.getElementById('btnInstallApp').classList.add('hidden-view');
+                    deferredPrompt = null;
+                }); return;
+            }
+
+            if (isIOS) {
+                container.innerHTML = `<div class="p-3 bg-gray-50 rounded-lg border border-gray-200"><p class="font-bold text-[#5C544D] mb-1"><i class="fa-brands fa-apple text-lg mr-1.5 text-gray-700"></i>iPhone / iPad 安裝方式：</p><ol class="list-decimal list-inside space-y-1 text-xs text-gray-600"><li>點擊 Safari 下方的 <b>「分享」按鈕</b> (<i class="fa-solid fa-arrow-up-from-bracket"></i>)。</li><li>滑動點選 <b>「加入主畫面」</b> (<i class="fa-regular fa-square-plus"></i>)。</li><li>右上角點擊 <b>「新增」</b>，即可像專屬 App 般在桌面點開！</li></ol></div>`;
+            } else {
+                container.innerHTML = `<div class="p-3 bg-gray-50 rounded-lg border border-gray-200"><p class="font-bold text-[#5C544D] mb-1"><i class="fa-brands fa-android text-lg mr-1.5 text-green-600"></i>Android 安裝方式：</p><ol class="list-decimal list-inside space-y-1 text-xs text-gray-600"><li>點擊瀏覽器右上角 <b>「三個點」選單</b>。</li><li>點選 <b>「加到主螢幕」</b> 或 <b>「安裝應用程式」</b>。</li><li>確認後即可於手機桌面獲得完整 App 體驗。</li></ol></div>`;
+            }
+            document.getElementById('installModal').classList.add('show');
+        }
+
+        function switchView(view) {
+            const body = document.getElementById('bodyEl'); const pView = document.getElementById('patientView'); const aView = document.getElementById('adminView'); const bPatient = document.getElementById('btnPatient'); const bAdmin = document.getElementById('btnAdmin');
+            if(view === 'patient') { body.className = 'patient-mode'; pView.classList.remove('hidden-view'); aView.classList.add('hidden-view'); bPatient.className = 'nav-btn active-patient'; bAdmin.className = 'nav-btn inactive-admin'; loadPatientData(); } 
+            else { body.className = 'admin-mode'; pView.classList.add('hidden-view'); aView.classList.remove('hidden-view'); bPatient.className = 'nav-btn inactive-patient'; bAdmin.className = 'nav-btn active-admin'; exerciseDB.once('value').then(snap => refreshAdminDropdown(snap.val())); }
+        }
+
+        function requestAdminAccess() {
+            if (document.getElementById('bodyEl').className.includes('admin-mode')) return;
+            document.getElementById('adminPassword').value = ''; document.getElementById('authError').classList.add('hidden-view'); document.getElementById('authModal').classList.add('show'); document.getElementById('adminPassword').focus();
+        }
+
+        function verifyAdmin() {
+            if (document.getElementById('adminPassword').value === ADMIN_PASSWORD) { closeModal('authModal'); switchView('admin'); } 
+            else { document.getElementById('authError').classList.remove('hidden-view'); document.getElementById('adminPassword').value = ''; document.getElementById('adminPassword').focus(); }
+        }
+        document.getElementById('adminPassword').addEventListener('keypress', (e) => { if (e.key === 'Enter') verifyAdmin(); });
+
+        function showCustomAlert(title, msg, type = 'info') {
+            document.getElementById('alertTitle').innerText = title; document.getElementById('alertMsg').innerHTML = msg;
+            const icon = document.getElementById('alertIcon'); const border = document.getElementById('alertCardBorder'); const btn = document.getElementById('alertBtn');
+            if(type === 'success') { icon.className = 'fa-solid fa-circle-check text-4xl text-[#9AB098] mb-3'; border.className = 'modal-card border-t-4 border-[#9AB098]'; btn.className = 'w-full bg-[#9AB098] text-white py-2.5 rounded-lg font-bold hover:bg-[#839881]'; } 
+            else if(type === 'error') { icon.className = 'fa-solid fa-circle-xmark text-4xl text-red-500 mb-3'; border.className = 'modal-card border-t-4 border-red-500'; btn.className = 'w-full bg-red-500 text-white py-2.5 rounded-lg font-bold hover:bg-red-600'; } 
+            else { icon.className = 'fa-solid fa-circle-info text-4xl text-[#9AB098] mb-3'; border.className = 'modal-card border-t-4 border-[#9AB098]'; btn.className = 'w-full bg-[#9AB098] text-white py-2.5 rounded-lg font-bold hover:bg-[#839881]'; }
+            document.getElementById('alertModal').classList.add('show');
+        }
+
+        function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+        // ==========================================
+        // 3. 病友端資料處理
+        // ==========================================
+        function loadPatientData() {
+            currentPatient = document.getElementById('patientName').value.trim();
+            if(!currentPatient) { patientData = { targets: { cardioDaily: 0, strengthReps: 0, strengthWeeklyDays: 0 }, logs: {} }; updateUI(); return; }
+            const saved = localStorage.getItem('local_ex_ad987_' + currentPatient);
+            if (saved) {
+                patientData = JSON.parse(saved);
+                if(!patientData.targets) patientData.targets = {};
+                if(patientData.targets.strengthWeekly && !patientData.targets.strengthWeeklyDays) patientData.targets.strengthWeeklyDays = patientData.targets.strengthWeekly;
+                document.getElementById('targetCardio').value = patientData.targets.cardioDaily || ''; document.getElementById('targetStrengthReps').value = patientData.targets.strengthReps || ''; document.getElementById('targetStrengthDays').value = patientData.targets.strengthWeeklyDays || '';
+            } else {
+                patientData = { targets: { cardioDaily: 0, strengthReps: 0, strengthWeeklyDays: 0 }, logs: {} };
+                document.getElementById('targetCardio').value = ''; document.getElementById('targetStrengthReps').value = ''; document.getElementById('targetStrengthDays').value = '';
+            }
+            document.getElementById('recordDate').value = getTodayStr(); loadDateData();
+        }
+
+        function saveTargets() {
+            if(!currentPatient) return;
+            patientData.targets.cardioDaily = parseInt(document.getElementById('targetCardio').value, 10) || 0; patientData.targets.strengthReps = parseInt(document.getElementById('targetStrengthReps').value, 10) || 0; patientData.targets.strengthWeeklyDays = parseInt(document.getElementById('targetStrengthDays').value, 10) || 0;
+            localStorage.setItem('local_ex_ad987_' + currentPatient, JSON.stringify(patientData)); updateUI();
+        }
+
+        function changeDate(offset) { saveDailyData(); const currentVal = document.getElementById('recordDate').value || getTodayStr(); document.getElementById('recordDate').value = addDaysStr(currentVal, offset); loadDateData(); }
+        function loadDateData() { currentDateStr = document.getElementById('recordDate').value || getTodayStr(); const log = patientData.logs[currentDateStr] || getEmptyLog(); logInputs.forEach(id => document.getElementById(id).value = log[id] || ''); updateUI(); }
+
+        function saveDailyData() {
+            if(!currentPatient) return;
+            let log = patientData.logs[currentDateStr] || getEmptyLog(); logInputs.forEach(id => log[id] = document.getElementById(id).value);
+            const cMins = parseInt(log.cardioMins, 10) || 0; const sReps = parseInt(log.strengthReps, 10) || 0; const sSets = parseInt(log.strengthSets, 10) || 0;
+            log.hasCardio = cMins > 0; log.hasStrength = (sReps * sSets) > 0;
+            patientData.logs[currentDateStr] = log; localStorage.setItem('local_ex_ad987_' + currentPatient, JSON.stringify(patientData)); updateUI();
+        }
+
+        function syncToCloud() {
+            currentPatient = document.getElementById('patientName').value.trim();
+            if(!currentPatient) return showCustomAlert('提示', '請先輸入姓名。', 'error');
+            saveTargets(); saveDailyData();
+            exerciseDB.child(currentPatient).set(patientData)
+                .then(() => showCustomAlert('上傳成功！', `✅ 謝謝您，<b>${currentPatient}</b>。<br>運動記錄與目標已成功同步至雲端後台。`, 'success'))
+                .catch((error) => showCustomAlert('上傳失敗', `連線異常或存取被拒。<br>錯誤資訊：${error.message}`, 'error'));
+        }
+
+        function setChartMode(mode) {
+            chartMode = mode;
+            document.getElementById('btnChartWeek').className = mode === 'week' ? 'text-xs px-3 py-1 rounded-full bg-[#9AB098] text-white font-bold transition-colors' : 'text-xs px-3 py-1 rounded-full bg-gray-200 text-gray-600 font-bold transition-colors hover:bg-gray-300';
+            document.getElementById('btnChartAll').className = mode === 'all' ? 'text-xs px-3 py-1 rounded-full bg-[#9AB098] text-white font-bold transition-colors' : 'text-xs px-3 py-1 rounded-full bg-gray-200 text-gray-600 font-bold transition-colors hover:bg-gray-300';
+            updateUI();
+        }
+
+        function updateUI() {
+            if(!currentPatient) return;
+            let dates = [];
+            if (chartMode === 'week') { for(let i = 6; i >= 0; i--) { dates.push(addDaysStr(currentDateStr, -i)); } } 
+            else { dates = Object.keys(patientData.logs).sort(); if(dates.length === 0) { for(let i = 6; i >= 0; i--) { dates.push(addDaysStr(currentDateStr, -i)); } } }
+
+            let labels = [], cardioData = [], strengthData = [];
+            let past7StrengthDays = 0, currentDayCardioMins = 0, currentDayStrengthReps = 0;
+            let past7Dates = [];
+            for(let i = 6; i >= 0; i--) past7Dates.push(addDaysStr(currentDateStr, -i));
+            
+            past7Dates.forEach(dStr => {
+                const log = patientData.logs[dStr];
+                if(log) {
+                    const cMins = parseInt(log.cardioMins, 10) || 0; const totStrength = (parseInt(log.strengthReps, 10) || 0) * (parseInt(log.strengthSets, 10) || 0);
+                    if(totStrength > 0) past7StrengthDays++;
+                    if(dStr === currentDateStr) { currentDayCardioMins = cMins; currentDayStrengthReps = totStrength; }
+                }
+            });
+
+            dates.forEach(dStr => {
+                labels.push(chartMode === 'all' ? dStr.substring(5) : `${dStr.substring(5)}(${getDayOfWeek(dStr)})`);
+                const log = patientData.logs[dStr];
+                if(log) { cardioData.push(parseInt(log.cardioMins, 10) || 0); strengthData.push((parseInt(log.strengthReps, 10) || 0) * (parseInt(log.strengthSets, 10) || 0)); } 
+                else { cardioData.push(0); strengthData.push(0); }
+            });
+
+            const tCardio = patientData.targets.cardioDaily || 0; const tStrengthReps = patientData.targets.strengthReps || 0; const tStrengthDays = patientData.targets.strengthWeeklyDays || 0;
+
+            if(chartMode === 'week') {
+                document.getElementById('cardioStatusText').innerText = `今日目標: ${tCardio}分 / 目前: ${currentDayCardioMins}分`;
+                document.getElementById('strengthStatusText').innerHTML = `今日次數: <span class="font-bold text-[#6B8EAD]">${currentDayStrengthReps}次</span> (目標: ${tStrengthReps || '-'}) ｜ 近7天已做: <span class="font-bold text-[#4A7C59]">${past7StrengthDays}天</span> (目標: ${tStrengthDays}天/週)`;
+            } else {
+                let totalAllStrengthDays = Object.values(patientData.logs).filter(l => (parseInt(l.strengthReps,10)||0)*(parseInt(l.strengthSets,10)||0) > 0).length;
+                document.getElementById('cardioStatusText').innerText = '';
+                document.getElementById('strengthStatusText').innerHTML = `累計肌力運動天數：<span class="font-bold text-[#4A7C59]">${totalAllStrengthDays} 天</span> (每週目標: ${tStrengthDays}天)`;
+            }
+
+            const minWidth = chartMode === 'all' && labels.length > 7 ? `${labels.length * 50}px` : '100%';
+            document.getElementById('cardioChartWrapper').style.minWidth = minWidth; document.getElementById('strengthChartWrapper').style.minWidth = minWidth;
+            drawChart('cardioChart', labels, cardioData, '#E48A72', tCardio, '每日有氧目標', cardioChartInstance, (inst) => cardioChartInstance = inst, '時間 (分鐘)');
+            drawChart('strengthChart', labels, strengthData, '#6B8EAD', tStrengthReps, '每次次數目標', strengthChartInstance, (inst) => strengthChartInstance = inst, '訓練總次數 (下x組)');
+            generateFeedback(currentDayCardioMins, tCardio, currentDayStrengthReps, tStrengthReps, past7StrengthDays, tStrengthDays);
+        }
+
+        function generateFeedback(cardioToday, cardioDailyTarget, strengthTodayReps, strengthRepsTarget, strengthDays, strengthDaysTarget) {
+            const title = document.getElementById('feedbackTitle'); const text = document.getElementById('feedbackText'); const icon = document.getElementById('feedbackIcon'); const box = document.getElementById('feedbackBox');
+            if(cardioDailyTarget === 0 && strengthRepsTarget === 0 && strengthDaysTarget === 0) {
+                title.innerText = "設定目標，開始原子化拆解"; text.innerText = "請在上方設定您「每天」能輕鬆做到的有氧時間、每次想做的「肌力訓練次數」，以及每週的「肌力天數目標」。切記：大腦討厭壓力，目標設得越小、越不費力越好喔！"; icon.innerHTML = '<i class="fa-solid fa-seedling"></i>'; return;
+            }
+            let msg = ""; let isAwesome = false;
+            if(cardioDailyTarget > 0) {
+                if(cardioToday >= cardioDailyTarget) { msg += `太棒了！您今天完成了 <b>${cardioToday}</b> 分鐘的有氧，達成了每日小目標。`; isAwesome = true; } 
+                else if(cardioToday > 0) { msg += `今天做了 <b>${cardioToday}</b> 分鐘的有氧，雖然還沒達到目標，但每一分鐘都是愛自己的開始，給自己一個擁抱！`; } 
+                else { msg += `今天還沒做有氧喔。沒關係，也許可以把活動疊加在日常習慣後，例如：洗澡前原地踏步 3 分鐘？`; }
+            }
+            if(strengthRepsTarget > 0 || strengthDaysTarget > 0) {
+                msg += "<br>";
+                if(strengthTodayReps > 0) {
+                    if(strengthRepsTarget > 0 && strengthTodayReps >= strengthRepsTarget) { msg += `今天肌力訓練完成了 <b>${strengthTodayReps}</b> 次，順利跨越每次目標！`; } 
+                    else { msg += `今天完成了 <b>${strengthTodayReps}</b> 次肌力訓練，微小的累積都是力量！`; }
+                }
+                if(strengthDaysTarget > 0) {
+                    if(strengthDays >= strengthDaysTarget) { msg += ` 過去 7 天內已完成 <b>${strengthDays}</b> 天肌力訓練，達成每週目標，肌肉正溫柔地強韌起來！`; isAwesome = true; } 
+                    else { msg += ` 過去 7 天完成了 <b>${strengthDays}</b> 天肌力訓練 (每週目標 ${strengthDaysTarget} 天)。不求快不求完美，穩定持續最珍貴。`; }
+                }
+            }
+            text.innerHTML = msg;
+            if(isAwesome) { title.innerText = "太棒了，繼續保持！"; icon.innerHTML = '<i class="fa-solid fa-fire text-[#E48A72]"></i>'; box.style.borderLeftColor = '#E48A72'; } 
+            else { title.innerText = "每一小步，都值得肯定"; icon.innerHTML = '<i class="fa-solid fa-heart text-[#DDA793]"></i>'; box.style.borderLeftColor = '#DDA793'; }
+        }
+
+        // ==========================================
+        // 4. 管理後台功能 & 匯出 Excel
+        // ==========================================
+        function refreshAdminDropdown(cloudData) {
+            const select = document.getElementById('adminPatientSelect'); const btnDel = document.getElementById('btnDeletePatient'); const btnExp = document.getElementById('btnExportExcel');
+            const currentSelected = select.value; select.innerHTML = '<option value="">請選擇病友...</option>';
+            if(cloudData) { Object.keys(cloudData).forEach(user => { const opt = document.createElement('option'); opt.value = user; opt.textContent = user; select.appendChild(opt); }); if(cloudData[currentSelected]) select.value = currentSelected; }
+            btnDel.classList.toggle('hidden-view', !select.value); btnExp.classList.toggle('hidden-view', !select.value);
+            if(!select.value) { document.getElementById('adminDashboard').classList.add('hidden-view'); document.getElementById('adminEmptyState').classList.remove('hidden-view'); }
+        }
+
+        function loadAdminData(forceData = null) {
+            const selectedUser = document.getElementById('adminPatientSelect').value;
+            document.getElementById('btnDeletePatient').classList.toggle('hidden-view', !selectedUser); document.getElementById('btnExportExcel').classList.toggle('hidden-view', !selectedUser);
+            if(!selectedUser) { document.getElementById('adminDashboard').classList.add('hidden-view'); document.getElementById('adminEmptyState').classList.remove('hidden-view'); return; }
+            if(forceData) processAdminData(forceData[selectedUser] || { targets:{}, logs:{} }); 
+            else exerciseDB.child(selectedUser).once('value').then(snap => processAdminData(snap.val() || { targets:{}, logs:{} }));
+        }
+
+        function processAdminData(profile) {
+            adminCloudDataSnapshot = profile;
+            document.getElementById('adminDashboard').classList.remove('hidden-view'); document.getElementById('adminEmptyState').classList.add('hidden-view');
+
+            if(!profile.targets) profile.targets = { cardioDaily:0, strengthReps:0, strengthWeeklyDays:0 }; if(!profile.logs) profile.logs = {};
+            const tCardio = profile.targets.cardioDaily || 0; const tStrengthReps = profile.targets.strengthReps || 0; const tStrengthDays = profile.targets.strengthWeeklyDays || profile.targets.strengthWeekly || 0;
+            document.getElementById('adminTargetCardio').innerText = tCardio; document.getElementById('adminTargetStrengthReps').innerText = tStrengthReps; document.getElementById('adminTargetStrengthDays').innerText = tStrengthDays;
+
+            const logs = profile.logs; const dates = Object.keys(logs).filter(d => logs[d].hasCardio || logs[d].hasStrength || logs[d].notes).sort((a, b) => b.localeCompare(a));
+            const tbody = document.getElementById('adminTableBody'); tbody.innerHTML = '';
+            
+            let last7CardioMins = 0, last7StrengthDays = 0, cardioMetDays = 0;
+            const latestDateStr = dates.length > 0 ? dates[0] : getTodayStr();
+
+            for(let i = 0; i < 7; i++) {
+                const d = logs[addDaysStr(latestDateStr, -i)];
+                if(d) {
+                    const cmins = parseInt(d.cardioMins, 10) || 0; last7CardioMins += cmins; if(tCardio > 0 && cmins >= tCardio) cardioMetDays++;
+                    const sTot = (parseInt(d.strengthReps, 10) || 0) * (parseInt(d.strengthSets, 10) || 0); if(sTot > 0) last7StrengthDays++;
+                }
+            }
+
+            dates.forEach(dateStr => {
+                const log = logs[dateStr]; const tr = document.createElement('tr');
+                const strReps = log.strengthReps || 0, strSets = log.strengthSets || 0; const totCount = (parseInt(strReps,10)||0) * (parseInt(strSets,10)||0);
+                const strVal = log.hasStrength ? `${strReps} 下 x ${strSets} 組` : '-';
+                tr.innerHTML = `<td class="font-bold text-[#2C3E50]">${dateStr} (${getDayOfWeek(dateStr)})</td><td>${log.cardioType || '-'}</td><td class="text-[#E48A72] font-bold">${log.cardioMins ? log.cardioMins + ' 分' : '-'}</td><td>${log.strengthType || '-'}</td><td class="text-[#6B8EAD]">${strVal}</td><td class="text-[#6B8EAD] font-bold">${totCount > 0 ? totCount + ' 次' : '-'}</td><td class="text-left text-gray-500 max-w-xs truncate">${log.notes || '-'}</td>`;
+                tbody.appendChild(tr);
+            });
+
+            let alertHtml = `近 7 天統計：有氧達標 <span class="font-bold text-[#E48A72]">${cardioMetDays}</span> 天，肌力訓練執行 <span class="font-bold text-[#4A7C59]">${last7StrengthDays}</span> 天。`;
+            if (tStrengthDays > 0 && last7StrengthDays < tStrengthDays) alertHtml += `<br><i class="fa-solid fa-circle-exclamation text-yellow-500 mr-1"></i> 提醒：肌力訓練未達每週天數目標 (${tStrengthDays} 天)。`;
+            if (tCardio > 0 && cardioMetDays < 3) alertHtml += `<br><i class="fa-solid fa-circle-info text-blue-500 mr-1"></i> 注意：每日有氧達標天數偏低，可協助檢視活動疊加策略。`;
+            if (cardioMetDays >= 3 && last7StrengthDays >= tStrengthDays && (tCardio > 0 || tStrengthDays > 0)) alertHtml = `<i class="fa-solid fa-star text-yellow-400 mr-1"></i> 執行狀況良好！穩定達成目標。<br>` + alertHtml;
+            document.getElementById('adminAlert').innerHTML = alertHtml; document.getElementById('adminStrengthSummaryText').innerText = `近7天完成天數: ${last7StrengthDays} 天 (目標: ${tStrengthDays} 天/週)`;
+            updateAdminChart();
+        }
+
+        // === 匯出 Excel ===
+        function exportToExcel() {
+            const selectedUser = document.getElementById('adminPatientSelect').value;
+            if(!adminCloudDataSnapshot || !selectedUser) return showCustomAlert('提示', '請先選擇病友資料', 'error');
+            const logs = adminCloudDataSnapshot.logs || {}; const dates = Object.keys(logs).filter(d => logs[d].hasCardio || logs[d].hasStrength || logs[d].notes).sort();
+            const exportData = dates.map(d => {
+                const log = logs[d]; const sReps = parseInt(log.strengthReps, 10)||0; const sSets = parseInt(log.strengthSets, 10)||0;
+                return {
+                    "日期": `${d} (${getDayOfWeek(d)})`, "有氧運動項目": log.cardioType || '', "有氧持續時間(分)": parseInt(log.cardioMins, 10)||0, "肌力訓練項目": log.strengthType || '', "肌力次數(每組)": sReps, "肌力組數": sSets, "肌力當日總次數": sReps * sSets, "特別註記": log.notes || ''
+                };
+            });
+            if(exportData.length === 0) return showCustomAlert('提示', '該病友尚無有效的日誌資料可供匯出', 'error');
+            const ws = XLSX.utils.json_to_sheet(exportData); const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "雲端運動日誌"); XLSX.writeFile(wb, `${selectedUser}_雲端運動日誌_${getTodayStr()}.xlsx`);
+        }
+
+        function setAdminChartMode(mode) {
+            adminChartMode = mode;
+            document.getElementById('btnAdmWeek').className = mode === 'week' ? 'text-xs px-3 py-1 rounded-full bg-[#4A90E2] text-white font-bold transition-colors' : 'text-xs px-3 py-1 rounded-full bg-gray-200 text-gray-600 font-bold transition-colors hover:bg-gray-300';
+            document.getElementById('btnAdmAll').className = mode === 'all' ? 'text-xs px-3 py-1 rounded-full bg-[#4A90E2] text-white font-bold transition-colors' : 'text-xs px-3 py-1 rounded-full bg-gray-200 text-gray-600 font-bold transition-colors hover:bg-gray-300';
+            updateAdminChart();
+        }
+
+        function updateAdminChart() {
+            if(!adminCloudDataSnapshot) return;
+            const logs = adminCloudDataSnapshot.logs || {}; const targets = adminCloudDataSnapshot.targets || {}; const allDates = Object.keys(logs).filter(d => logs[d].hasCardio || logs[d].hasStrength).sort(); 
+            let chartDates = [];
+            if(adminChartMode === 'week') { const latestDateStr = allDates.length > 0 ? allDates[allDates.length - 1] : getTodayStr(); for(let i = 6; i >= 0; i--) chartDates.push(addDaysStr(latestDateStr, -i)); } 
+            else { chartDates = allDates; if(chartDates.length === 0) chartDates = [getTodayStr()]; }
+
+            let labels = [], cardioArr = [], strengthArr = [];
+            chartDates.forEach(dStr => {
+                labels.push(adminChartMode === 'all' ? dStr.substring(5) : `${dStr.substring(5)} (${getDayOfWeek(dStr)})`);
+                const d = logs[dStr];
+                if(d) { cardioArr.push(parseInt(d.cardioMins, 10) || 0); strengthArr.push((parseInt(d.strengthReps, 10) || 0) * (parseInt(d.strengthSets, 10) || 0)); } 
+                else { cardioArr.push(0); strengthArr.push(0); }
+            });
+
+            const minW = adminChartMode === 'all' && labels.length > 7 ? `${labels.length * 50}px` : '100%';
+            document.getElementById('adminCardioChartWrapper').style.minWidth = minW; document.getElementById('adminStrengthChartWrapper').style.minWidth = minW;
+            drawChart('adminCardioChart', labels, cardioArr, '#E48A72', targets.cardioDaily, '每日目標', adminCardioChartInstance, (instance) => adminCardioChartInstance = instance, '時間 (分鐘)');
+            drawChart('adminStrengthChart', labels, strengthArr, '#6B8EAD', targets.strengthReps, '每次次數目標', adminStrengthChartInstance, (instance) => adminStrengthChartInstance = instance, '訓練總次數 (下x組)');
+        }
+
+        function promptDeletePatient() {
+            const selectedUser = document.getElementById('adminPatientSelect').value; if(!selectedUser) return;
+            document.getElementById('deleteMsg').innerText = `此動作無法復原，您確定要將病友「${selectedUser}」的雲端運動記錄徹底刪除嗎？`; document.getElementById('deleteModal').classList.add('show');
+        }
+
+        function executeDelete() {
+            const selectedUser = document.getElementById('adminPatientSelect').value;
+            exerciseDB.child(selectedUser).remove().then(() => { closeModal('deleteModal'); showCustomAlert('刪除成功', `病友「${selectedUser}」的資料已從雲端移除。`, 'success'); document.getElementById('adminPatientSelect').value = ""; loadAdminData(); }).catch(err => showCustomAlert('刪除失敗', err.message, 'error'));
+        }
+
+        function drawChart(canvasId, labels, dataArr, color, targetVal, targetLabel, instanceRef, setInstance, yTitle) {
+            const ctx = document.getElementById(canvasId).getContext('2d'); if(instanceRef) instanceRef.destroy();
+            let datasets = [{ label: '完成量', data: dataArr, backgroundColor: color, borderRadius: 4, order: 2 }];
+            if(targetVal > 0) datasets.push({ label: targetLabel, data: Array(labels.length).fill(targetVal), type: 'line', borderColor: '#E74C3C', borderDash: [5, 5], borderWidth: 2, pointRadius: 0, fill: false, order: 1 });
+            const newInstance = new Chart(ctx, {
+                type: 'bar', data: { labels: labels, datasets: datasets },
+                options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, scales: { y: { beginAtZero: true, title: { display: true, text: yTitle, font: { size: 11 } } } }, plugins: { legend: { display: targetVal > 0, position: 'top', align: 'end', labels: { boxWidth: 12, font: { size: 11 } } }, tooltip: { callbacks: { label: function(context) { if(context.dataset.type === 'line') { return `${context.dataset.label}: ${context.raw}`; } return `完成量: ${context.raw} ${yTitle.includes('分鐘') ? '分鐘' : '次'}`; } } } } }
+            });
+            setInstance(newInstance);
+        }
+    </script>
+</body>
+</html>
